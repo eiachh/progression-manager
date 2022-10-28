@@ -1,6 +1,7 @@
 from glob import glob
 import json
 import math
+import ast
 from flask import Flask,request
 
 from progressionObjects.prgGetFirstFleet import GetFirstFleet
@@ -17,12 +18,14 @@ class progressionManager():
         self.activeProgressionObject = self.getCurrentProgressionObject()
         progItemToB = self.getNextProgressionItemToBuild()
 
+
+
         if(self.isProgressionItemWorthIt(progItemToB)):
             return progItemToB
         return {'Result': 'None'}
     
-    def getNextProgressionItemToBuild(self):
-        itemsParallel = self.activeProgressionObject.getNextItemsParallel()
+    def getNextProgressionItemToBuild(self): 
+        itemsParallel = self.activeProgressionObject.getNextItemsParallel(self.request_data)
         affordableItemsParallel = self.getFilteredListByAffordance(itemsParallel)
         return 'Not implemented (getNextProgressionItemToBuild)'
 
@@ -44,10 +47,10 @@ port = 5002
 app = Flask(__name__)
 
 @app.route('/get_progression_suggestion', methods=['GET'])
-def getPreferedBuildingEndpoint():
-    progManager.request_data = request.get_json()
-    
-    return 'Not implemented'
+def getProgressionSuggestionEndpoint():
+    progManager.request_data = ast.literal_eval((request.get_json()))
+    print(progManager.request_data)
+    return progManager.processRequest()
 
 @app.route('/ready', methods=['GET'])
 def getReadiness():
