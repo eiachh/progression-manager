@@ -3,10 +3,12 @@ from common_lib.const import constants
 
 
 class GetFirstFleet:
-    goalBuilding = constants.SHIPYARD
-    goalBuildingLevel = 2
-    goalResearch = constants.COMBUSTION_DRIVE
-    goalResearchLevel = 2
+    goalEntity = constants.SMALL_CARGO
+
+    def createResponseJson(buildingID, buildingLevel, researchID, researchLevel):
+        return {'constructable' : {'buildingID': buildingID, 'buildingLevel': buildingLevel},
+                'researchable' : {'researchID' : researchID, 'researchLevel' : researchLevel}
+        }
 
     def isRelevantProgressionObject(requestData):
         if(requestData['facilityLevels'][constants.ATTR_NAME_OF_SHIPYARD] < 2):
@@ -15,59 +17,56 @@ class GetFirstFleet:
 
     def getNextItemsParallel(self, requestData):
         if(requestData['facilityLevels'][constants.ATTR_NAME_OF_SHIPYARD] == 1):
-            return self.createResponseJson(constants.SHIPYARD, 2)
+            return GetFirstFleet.createResponseJson(constants.SHIPYARD, 2)
 
-        respBuilding = self.getClosestResearchedPrerequisites(self.goalBuilding, requestData)
-        respResearch = self.getClosestResearchedPrerequisites(self.goalResearch, requestData)
+        respBuilding = self.getAllDoablePrerequisites(self.goalEntity, requestData)
 
-
-        return {'constructable' : [{'buildingID': 'buildingID', 'buildingLevel': 'buildingLevel'},{'buildingID': 'buildingID', 'buildingLevel': 'buildingLevel', 'severity': 'severity'}],
-                'researchable' : 'IDK TODO'
-        }
-    
-    def createResponseJson(self, buildingID, buildingLevel, researchID, researchLevel):
-        return {'constructable' : {'buildingID': buildingID, 'buildingLevel': buildingLevel},
-                'researchable' : {'researchID' : researchID, 'researchLevel' : researchLevel}
-        }
-
-    # def getAvailablePrerequisitesOf(self, ogameID, requestData):
-    #     self.getClosestResearchedPrerequisites(ogameID, requestData)
-    #     return constants.prerequisitesDict[ogameID]
-
-    def getClosestResearchedPrerequisites(self, ogameID, requestData):
-        directPrerequisite = constants.prerequisitesDict[ogameID]
-
-        requiredBuildingID = directPrerequisite['constructable']['buildingID']
-        requiredBuildingLevel = directPrerequisite['constructable']['buildingLevel']  
         
-        requiredResearchID = directPrerequisite['researchable']['researchID']
-        requiredResearchLevel = directPrerequisite['researchable']['researchLevel']   
 
+        respBuilding['constructable'] = [i for n, i in enumerate(respBuilding['constructable']) if i not in respBuilding['constructable'][n + 1:]]
+        respBuilding['researchable'] = [i for n, i in enumerate(respBuilding['researchable']) if i not in respBuilding['researchable'][n + 1:]]
+
+        return respBuilding
+
+    def getAllDoablePrerequisites(self, ogameID, requestData):
+        directPrerequisite = constants.prerequisitesDict[ogameID]
         missingPrerequisites = {
             'constructable' : [],
             'researchable' : []
         }
+
+        for constructablePrereq in  directPrerequisite['constructable']:
+            self.fillMissingPrereq(requestData, missingPrerequisites, constructablePrereq, False)
+
+        for researchablePrereq in  directPrerequisite['researchable']:
+            self.fillMissingPrereq(requestData, missingPrerequisites, researchablePrereq, True)
+
+        return missingPrerequisites
+
+    def fillMissingPrereq(self, requestData, missingPrerequisites, constructablePrereq, isResearchable):
+        idAttrStr = 'buildingID'
+        levelAttrStr = 'buildingLevel'
+        requestDataLevelAttrStr = 'facilityLevels'
+        typeAttrStr = 'constructable'
+
+        if(isResearchable):
+            idAttrStr = 'researchID'
+            levelAttrStr = 'researchLevel'
+            requestDataLevelAttrStr = 'researchLevels'
+            typeAttrStr = 'researchable'
         
+        requiredBuildingID = constructablePrereq[idAttrStr]
+        requiredBuildingLevel = constructablePrereq[levelAttrStr]  
+
         if(requiredBuildingID != -1):
-            currentBuildingLevel = requestData['facilityLevels'][constants.convertOgameIDToAttrName(requiredBuildingID)]
-        if(requiredResearchID != -1):
-            currentResearchLevel  = requestData['researchLevels'][constants.convertOgameIDToAttrName(requiredResearchID)]
+            currentBuildingLevel = requestData[requestDataLevelAttrStr][constants.convertOgameIDToAttrName(requiredBuildingID)]
 
         if(requiredBuildingID != -1 and currentBuildingLevel < requiredBuildingLevel):
             if(self.isPrerequisiteMet(requiredBuildingID, requestData)):
-                missingPrerequisites['constructable'].append({'buildingID': requiredBuildingID, 'buildingLevel': currentBuildingLevel + 1}) 
+                missingPrerequisites[typeAttrStr].append({idAttrStr: requiredBuildingID, levelAttrStr: currentBuildingLevel + 1}) 
             else:
-                innerPrereq = self.getClosestResearchedPrerequisites(requiredBuildingID, requestData)
+                innerPrereq = self.getAllDoablePrerequisites(requiredBuildingID, requestData)
                 self.fillPrereqDataWithNonNull(missingPrerequisites, innerPrereq)
-
-        if(requiredResearchID != -1 and currentResearchLevel < requiredResearchLevel):
-            if(self.isPrerequisiteMet(requiredResearchID, requestData)):
-                missingPrerequisites['researchable'].append({'researchID': requiredResearchID, 'researchLevel': currentResearchLevel + 1})
-            else:
-                innerPrereq = self.getClosestResearchedPrerequisites(requiredResearchID, requestData)
-                self.fillPrereqDataWithNonNull(missingPrerequisites, innerPrereq)
-
-        return missingPrerequisites
 
     def fillPrereqDataWithNonNull(self, missingPrerequisites, innerPrereq):
         for constructable in innerPrereq['constructable']:
@@ -81,20 +80,19 @@ class GetFirstFleet:
     def isPrerequisiteMet(self, ogameID, requestData):
         directPrerequisite = constants.prerequisitesDict[ogameID]
 
-        requiredBuildingID = directPrerequisite['constructable']['buildingID']
-        requiredBuildingLevel = directPrerequisite['constructable']['buildingLevel']
+        for constructablePrereq in  directPrerequisite['constructable']:
+            requiredBuildingID = constructablePrereq['buildingID']
+            requiredBuildingLevel = constructablePrereq['buildingLevel']
+            if(requiredBuildingID != -1):
+                currentBuildingLevel = requestData['facilityLevels'][constants.convertOgameIDToAttrName(requiredBuildingID)]
+                if(requiredBuildingID != -1 and currentBuildingLevel < requiredBuildingLevel):
+                    return False 
 
-        requiredResearchID = directPrerequisite['researchable']['researchID']
-        requiredResearchLevel = directPrerequisite['researchable']['researchLevel']   
-        
-        if(requiredBuildingID != -1):
-            currentBuildingLevel = requestData['facilityLevels'][constants.convertOgameIDToAttrName(requiredBuildingID)]
-        if(requiredResearchID != -1):
-            currentResearchLevel  = requestData['researchLevels'][constants.convertOgameIDToAttrName(requiredResearchID)]
-
-        if(requiredBuildingID != -1 and currentBuildingLevel < requiredBuildingLevel):
-            return False 
-        if(requiredResearchID != -1 and currentResearchLevel < requiredResearchLevel):
-            return False
+        for researchablePrereq in  directPrerequisite['researchable']:
+            requiredResearchID = researchablePrereq['researchID']
+            requiredResearchLevel = researchablePrereq['researchLevel']
+            if(requiredResearchID != -1):
+                currentResearchLevel  = requestData['researchLevels'][constants.convertOgameIDToAttrName(requiredResearchID)]
+                if(requiredResearchID != -1 and currentResearchLevel < requiredResearchLevel):
+                    return False
         return True
-
