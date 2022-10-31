@@ -3,7 +3,6 @@ from glob import glob
 import json
 import math
 import ast
-import numpy as np
 from flask import Flask,request
 from common_lib.const import constants
 
