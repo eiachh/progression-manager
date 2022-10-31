@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: progression-manager
+  labels:
+    io.kompose.service: progression-manager
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+        maxSurge: 2
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      io.kompose.service: progression-manager
+  template:
+    metadata:
+      labels:
+        io.kompose.service: progression-manager
+    spec:
+      containers:
+      - name: progression-manager
+        image: eiachh/progression-manager
+        imagePullPolicy: "Never"
+        env:
+        - name: "PYTHONUNBUFFERED"
+          value: "1"
+        ports:
+        - containerPort: 5002
