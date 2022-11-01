@@ -1,5 +1,6 @@
 from operator import truediv
 from common_lib.const import constants
+from common_lib.utilities import utilities
 
 
 class GetFirstFleet:
@@ -60,7 +61,7 @@ class GetFirstFleet:
             currentBuildingLevel = requestData[requestDataLevelAttrStr][constants.convertOgameIDToAttrName(requiredBuildingID)]
 
         if(requiredBuildingID != -1 and currentBuildingLevel < requiredBuildingLevel):
-            if(self.isPrerequisiteMet(requiredBuildingID, requestData)):
+            if(utilities.isPrerequisiteMet(requiredBuildingID, requestData)):
                 missingPrerequisites[typeAttrStr].append({idAttrStr: requiredBuildingID, levelAttrStr: currentBuildingLevel + 1}) 
             else:
                 innerPrereq = self.getAllDoablePrerequisites(requiredBuildingID, requestData)
@@ -74,23 +75,3 @@ class GetFirstFleet:
         for researchable in innerPrereq['researchable']:
             if(researchable['researchID'] != -1):
                 missingPrerequisites['researchable'].append({'researchID': researchable['researchID'], 'researchLevel': researchable['researchLevel']})
-
-    def isPrerequisiteMet(self, ogameID, requestData):
-        directPrerequisite = constants.prerequisitesDict[ogameID]
-
-        for constructablePrereq in  directPrerequisite['constructable']:
-            requiredBuildingID = constructablePrereq['buildingID']
-            requiredBuildingLevel = constructablePrereq['buildingLevel']
-            if(requiredBuildingID != -1):
-                currentBuildingLevel = requestData['facilityLevels'][constants.convertOgameIDToAttrName(requiredBuildingID)]
-                if(requiredBuildingID != -1 and currentBuildingLevel < requiredBuildingLevel):
-                    return False 
-
-        for researchablePrereq in  directPrerequisite['researchable']:
-            requiredResearchID = researchablePrereq['researchID']
-            requiredResearchLevel = researchablePrereq['researchLevel']
-            if(requiredResearchID != -1):
-                currentResearchLevel  = requestData['researchLevels'][constants.convertOgameIDToAttrName(requiredResearchID)]
-                if(requiredResearchID != -1 and currentResearchLevel < requiredResearchLevel):
-                    return False
-        return True
