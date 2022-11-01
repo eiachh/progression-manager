@@ -4,11 +4,9 @@ from common_lib.const import constants
 
 class GetFirstFleet:
     goalEntity = constants.SMALL_CARGO
-
-    def createResponseJson(buildingID, buildingLevel, researchID, researchLevel):
-        return {'constructable' : {'buildingID': buildingID, 'buildingLevel': buildingLevel},
-                'researchable' : {'researchID' : researchID, 'researchLevel' : researchLevel}
-        }
+    
+    def __init__(self, prgManager):
+        self.prgManager = prgManager
 
     def isRelevantProgressionObject(requestData):
         if(requestData['facilityLevels'][constants.ATTR_NAME_OF_SHIPYARD] < 2):
@@ -17,7 +15,7 @@ class GetFirstFleet:
 
     def getNextItemsParallel(self, requestData):
         if(requestData['facilityLevels'][constants.ATTR_NAME_OF_SHIPYARD] == 1):
-            return GetFirstFleet.createResponseJson(constants.SHIPYARD, 2)
+            return self.prgManager.createResponseJson(constants.SHIPYARD, 2)
 
         respBuilding = self.getAllDoablePrerequisites(self.goalEntity, requestData)
 

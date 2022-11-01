@@ -16,6 +16,8 @@ class progressionManager():
 
     def processRequest(self):
         self.activeProgressionObject = self.getCurrentProgressionObject()
+        if(self.activeProgressionObject is None):
+            return progressionManager.createEmptyResponseJson()
         return self.getProgressionItemsToBuild()
     
     def getProgressionItemsToBuild(self): 
@@ -91,8 +93,17 @@ class progressionManager():
 
     def getCurrentProgressionObject(self):
         if(GetFirstFleet.isRelevantProgressionObject(self.request_data)):
-            return GetFirstFleet()
+            return GetFirstFleet(self)
         return None
+
+    def createResponseJson(buildingID, buildingLevel, researchID, researchLevel):
+        return {'constructable' : {'buildingID': buildingID, 'buildingLevel': buildingLevel},
+                'researchable' : {'researchID' : researchID, 'researchLevel' : researchLevel}
+        }
+    
+    def createEmptyResponseJson():
+        return progressionManager.createResponseJson(-1,-1,-1,-1)
+
 
 progManager = progressionManager()
 
@@ -101,8 +112,12 @@ app = Flask(__name__)
 
 @app.route('/get_progression_suggestion', methods=['GET'])
 def getProgressionSuggestionEndpoint():
-    progManager.request_data = ast.literal_eval((request.get_json()))
-    print(progManager.request_data)
+    requestData = request.get_json()
+    if(type(requestData) is dict):
+        progManager.request_data = requestData
+    else:
+        requestData  = json.dumps(requestData)
+        progManager.request_data = ast.literal_eval(requestData)
     return progManager.processRequest()
 
 @app.route('/ready', methods=['GET'])
